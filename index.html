@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSR Generator</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/forge/0.10.0/forge.min.js"></script>
+    <style>
+        /* General styling */
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #f4f4f4;
+        }
+
+        .container {
+            display: flex;
+            width: 90%;
+            max-width: 1200px;
+        }
+
+        /* Form section (Left side) */
+        .form-container {
+            width: 50%;
+            padding: 20px;
+            background-color: #ffffff;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+        }
+
+        .form-container input,
+        .form-container textarea{
+            width: 97%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        .form-container select {
+            width: 100%;
+            padding: 10px;
+            margin: 10px 0;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+        .form-container button {
+            width: 100%;
+            padding: 12px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        .form-container button:hover {
+            background-color: #45a049;
+        }
+
+        /* Result section (Right side) */
+        .result-container {
+            width: 50%;
+            padding: 20px;
+            background-color: #ffffff;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            margin-left: 20px;
+        }
+
+        .result-container textarea {
+            width: 100%;
+            height: 200px;
+            font-family: monospace;
+            font-size: 14px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+
+        /* Loader styling */
+        #loaderOverlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+        }
+
+        #loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 2s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+
+<div id="loaderOverlay">
+    <div id="loader"></div>
+</div>
+
+<div class="container">
+    <!-- Left Side (Form for CSR) -->
+    <div class="form-container">
+        <h2>Generate CSR</h2>
+        <label for="commonName">Common Name (CN)</label>
+        <input type="text" id="commonName" required>
+
+        <label for="organization">Organization</label>
+        <input type="text" id="organization" required>
+
+        <label for="organizationalUnit">Organizational Unit</label>
+        <input type="text" id="organizationalUnit" required>
+
+        <label for="country">Country (C)</label>
+        <input type="text" id="country" required>
+
+        <label for="state">State (ST)</label>
+        <input type="text" id="state" required>
+
+        <label for="locality">Locality (L)</label>
+        <input type="text" id="locality" required>
+
+        <label for="altNames">Subject Alternative Names (SANs)</label>
+        <input type="text" id="altNames" placeholder="Comma-separated list of domains">
+
+        <label for="keySize">Key Size (bits)</label>
+        <select id="keySize">
+            <option value="2048" selected>2048</option>
+			<option value="2048" selected>3072</option>
+			<option value="4096">4096</option>
+        </select>
+
+        <button onclick="generateCSR()">Generate CSR</button>
+    </div>
+
+    <!-- Right Side (Results for CSR and Private Key) -->
+    <div class="result-container">
+        <h2>Generated CSR</h2>
+        <textarea id="csrOutput" readonly></textarea>
+
+        <h2>Private Key</h2>
+        <textarea id="privateKeyOutput" readonly></textarea>
+    </div>
+</div>
+
+<script>
+// Show loader and hide form during CSR generation
+function generateCSR() {
+    // Show the loader overlay
+    document.getElementById('loaderOverlay').style.display = 'flex';
+
+    // Hide form fields
+    document.querySelector('.form-container').style.display = 'none';
+
+    // Get input values
+    var commonName = document.getElementById('commonName').value.trim();
+    var organization = document.getElementById('organization').value.trim();
+    var organizationalUnit = document.getElementById('organizationalUnit').value.trim();
+    var country = document.getElementById('country').value.trim();
+    var state = document.getElementById('state').value.trim();
+    var locality = document.getElementById('locality').value.trim();
+    var altNames = document.getElementById('altNames').value.trim().split(',').map(a => a.trim());
+    var keySize = parseInt(document.getElementById('keySize').value);
+
+    // Validate input
+    if (!commonName || !organization || !organizationalUnit || !country || !state || !locality) {
+        alert('Please fill in all required fields.');
+        return;
+    }
+
+    // Use a timeout to simulate async behavior
+    setTimeout(function() {
+        // Generate key pair (public and private)
+        var keys = forge.pki.rsa.generateKeyPair(keySize);
+
+        // Create CSR subject
+        var subject = [
+            { name: 'commonName', value: commonName },
+            { name: 'organizationName', value: organization },
+            { name: 'organizationalUnitName', value: organizationalUnit },
+            { name: 'countryName', value: country },
+            { name: 'stateOrProvinceName', value: state },
+            { name: 'localityName', value: locality }
+        ];
+
+        // Create the CSR
+        var csr = forge.pki.createCertificationRequest();
+        csr.publicKey = keys.publicKey;
+        csr.setSubject(subject);
+
+        // Add Subject Alternative Names (SANs)
+        if (altNames.length > 0) {
+            var extensions = [{
+                name: 'subjectAltName',
+                altNames: altNames.map(function(domain) {
+                    return { type: 2, value: domain }; // Type 2 means DNS name
+                })
+            }];
+            csr.setAttributes([{
+                name: 'extensionRequest',
+                extensions: extensions
+            }]);
+        }
+
+        // Sign CSR
+        csr.sign(keys.privateKey);
+
+        // Convert CSR and private key to PEM format
+        var csrPem = forge.pki.certificationRequestToPem(csr);
+        var privateKeyPem = forge.pki.privateKeyToPem(keys.privateKey);
+
+        // Hide loader and display the form again
+        document.getElementById('loaderOverlay').style.display = 'none';
+        document.querySelector('.form-container').style.display = 'block';
+
+        // Display the generated CSR and private key in the result area
+        document.getElementById('csrOutput').value = csrPem;
+        document.getElementById('privateKeyOutput').value = privateKeyPem;
+    }, 100); // Simulate async task
+}
+</script>
+
+</body>
+</html>
